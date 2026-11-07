@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Горячо–холодно: поиск Татошки</title>
+<style>
+:root{
+  --bg:#1cd3a2; --panel:#FBF4E4; --ink:#2A3A2C; --muted:#6B6A55;
+  --hot:#C9402A; --warm:#E8703F; --mild:#F2B33D; --cool:#8DBF9C; --cold:#2F6B3F; --deep:#1F4A2B;
+  --empty:#EADBB8;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:20px 14px}
+main{width:100%;max-width:520px}
+h1{font-size:2rem;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 16px;line-height:1.45}
+.bar{display:flex;gap:10px;margin-bottom:12px}
+.stat{flex:1;background:var(--panel);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font-size:1.6rem;line-height:1.1}
+.stat span{font-size:.85rem;color:var(--muted)}
+#msg{min-height:64px;border-radius:14px;padding:12px 14px;margin-bottom:12px;background:var(--panel);font-size:1.15rem;line-height:1.35;border-left:10px solid var(--empty);transition:border-color .2s}
+#msg small{display:block;color:var(--muted);font-size:.9rem;margin-top:2px}
+#grid{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;background:var(--panel);padding:8px;border-radius:18px}
+.c{aspect-ratio:1;border:0;border-radius:7px;background:var(--empty);cursor:pointer;font-family:Arial,Helvetica,sans-serif;font-size:1.1rem;color:#fff;transition:transform .12s}
+.c:hover:not(:disabled){transform:scale(1.07)}
+.c:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.c:disabled{cursor:default}
+.c.hot{background:var(--hot)} .c.warm{background:var(--warm)} .c.mild{background:var(--mild);color:#4a3406}
+.c.cool{background:var(--cool);color:#16361f} .c.cold{background:var(--cold)} .c.win{outline:3px solid var(--mild)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin:12px 2px;font-size:.85rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+button.btn{width:100%;padding:13px;border:0;border-radius:14px;background:var(--hot);color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:1.05rem;cursor:pointer}
+button.btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#result{display:none;margin-bottom:12px;background:var(--panel);border-radius:18px;padding:16px;text-align:center}
+#result .big{font-size:3.4rem;line-height:1;font-weight:bold;color:var(--hot)}
+#result .rank{font-size:1.2rem;margin-top:4px}
+
+.c.win{background:#6b5a4a center/cover no-repeat;font-size:0}
+#result img{width:110px;height:110px;object-fit:cover;border-radius:50%;border:4px solid var(--mild);margin-bottom:8px}
+.nick{display:flex;gap:8px;margin-bottom:12px}
+.nick input{flex:1;padding:11px 12px;border-radius:12px;border:2px solid var(--empty);background:var(--panel);color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:1rem}
+.lb{background:var(--panel);border-radius:18px;padding:12px 14px;margin-top:16px}
+.lb h2{font-size:1.15rem;margin:0 0 8px}
+.lb ol{margin:0;padding:0;list-style:none}
+.lb li{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--empty)}
+.lb li:first-child{border-top:0}
+.lb .pos{width:24px;color:var(--muted)}
+.lb .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .sc{font-weight:bold;color:var(--hot)}
+.lb li.me .nm{font-weight:bold}
+.lb p{margin:0;color:var(--muted);font-size:.9rem}
+#lbBody{max-height:440px;overflow-y:auto}
+</style>
+</head>
+<body>
+<main>
+  <h1>Найди Татошку</h1>
+  <p class="sub">Татошка спрятался в случайной клетке. Нажимая на клетки: игра подскажет, горячо или холодно. Чем меньше попыток, тем лучше рейтинг.</p>
+  <div class="nick"><input id="nick" maxlength="16" placeholder="Твой ник для рейтинга" autocomplete="off"></div>
+  <div class="bar">
+    <div class="stat"><b id="tries">0</b><span>попыток</span></div>
+    <div class="stat"><b id="best">–</b><span>лучший результат</span></div>
+  </div>
+  <div id="msg">Выбери любую клетку, чтоб начать.</div>
+  <div id="result">
+    <img id="ferret" alt="Татошка" src="data:image/jpeg;base64,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">
+    <div class="big" id="score">0</div>
+    <div class="rank" id="rank"></div>
+  </div>
+  <div id="grid" role="grid" aria-label="Поле, полюшко"></div>
+  <div class="legend">
+    <span><i style="background:var(--hot)"></i>Как в Ставрополе летом</span>
+    <span><i style="background:var(--warm)"></i>Тепло</span>
+    <span><i style="background:var(--mild)"></i>Не тепло</span>
+    <span><i style="background:var(--cool)"></i>Как в Москве сейчас</span>
+    <span><i style="background:var(--cold)"></i>Антарктида</span>
+  </div>
+  <button class="btn" id="again">Новая игра</button>
+  <section class="lb"><h2>Рейтинг игроков</h2><div id="lbBody"><p>Загрузка…</p></div></section>
+</main>
+<script>
+(function(){
+  var N=12; 
+  var grid=document.getElementById('grid'), msg=document.getElementById('msg');
+  var triesEl=document.getElementById('tries'), bestEl=document.getElementById('best');
+  var result=document.getElementById('result'), scoreEl=document.getElementById('score'), rankEl=document.getElementById('rank');
+  var FERRET=document.getElementById('ferret').src;
+  var nick=document.getElementById('nick'), lbBody=document.getElementById('lbBody'), db=null, uid=null;
+  try{nick.value=localStorage.getItem('treasure_nick')||'';}catch(e){}
+  var tx,ty,tries,prev,over,best=null;
+  try{var b=localStorage.getItem('treasure_best_tries'); if(b!==null&&b!=='') best=parseInt(b,10);}catch(e){}
+
+  function showBest(){bestEl.textContent=(best===null||isNaN(best))?'–':best}
+  function band(d){
+    if(d<=2) return {c:'hot',t:'Как в Ставрополе летом',k:'#C9402A'};
+    if(d<=4.5) return {c:'warm',t:'Тепло',k:'#E8703F'};
+    if(d<=7) return {c:'mild',t:'Не тепло',k:'#F2B33D'};
+    if(d<=10) return {c:'cool',t:'Как в Москве сейчас',k:'#8DBF9C'};
+    return {c:'cold',t:'Антарктида',k:'#2F6B3F'};
+  }
+  function rankName(t){
+    if(t<=6) return 'Ты счастливчик!';
+    if(t<=12) return 'Отличный следопыт';
+    if(t<=20) return 'Опытный искатель';
+    if(t<=35) return 'Неплохо';
+    if(t<=60) return 'Татошка найден, но не без труда';
+    return 'Главное — Татошка найден';
+  }
+  function start(){
+    tx=Math.floor(Math.random()*N); ty=Math.floor(Math.random()*N);
+    tries=0; prev=null; over=false;
+    triesEl.textContent=0;
+    msg.innerHTML='Выбери любую клетку по чуйке, чтоб начать.'; msg.style.borderLeftColor='';
+    result.style.display='none';
+    grid.innerHTML='';
+    for(var y=0;y<N;y++)for(var x=0;x<N;x++){
+      var b=document.createElement('button');
+      b.className='c'; b.dataset.x=x; b.dataset.y=y;
+      b.setAttribute('aria-label','Клетка '+(y+1)+'-'+(x+1));
+      grid.appendChild(b);
+    }
+  }
+  grid.addEventListener('click',function(e){
+    var b=e.target.closest('.c'); if(!b||over||b.disabled) return;
+    var x=+b.dataset.x,y=+b.dataset.y;
+    tries++; triesEl.textContent=tries;
+    var d=Math.sqrt((x-tx)*(x-tx)+(y-ty)*(y-ty));
+    b.disabled=true;
+    if(d===0){
+      over=true; b.className='c win'; b.style.backgroundImage='url('+FERRET+')'; b.textContent='';
+      var s=tries;
+      msg.innerHTML='Татошка найден за '+tries+' '+plural(tries)+'!'; msg.style.borderLeftColor='#F2B33D';
+      scoreEl.textContent=s+' '+pn(s); rankEl.textContent=rankName(s);
+      result.style.display='block';
+      submit(s);
+      if(best===null||isNaN(best)||s<best){best=s; try{localStorage.setItem('treasure_best_tries',String(s));}catch(e){} showBest();}
+      return;
+    }
+    var r=band(d); b.className='c '+r.c;
+    var trend='';
+    if(prev!==null){ trend = d<prev ? 'Теплее, чем в прошлый раз' : d>prev ? 'Холоднее, чем в прошлый раз' : 'Так же, как в прошлый раз'; }
+    prev=d;
+    msg.innerHTML=r.t+(trend?'<small>'+trend+'</small>':''); msg.style.borderLeftColor=r.k;
+  });
+  function pn(n){var m=n%10,k=n%100; if(m===1&&k!==11) return 'попытка'; if(m>=2&&m<=4&&(k<12||k>14)) return 'попытки'; return 'попыток';}
+  function plural(n){var m=n%10,h=n%100; if(m===1&&h!==11) return 'попытку'; if(m>=2&&m<=4&&(h<12||h>14)) return 'попытки'; return 'попыток';}
+  document.getElementById('again').addEventListener('click',start);
+  showBest(); start();
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  var pid=null;
+  try{pid=localStorage.getItem('treasure_pid'); if(!pid){pid='p'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('treasure_pid',pid);}}catch(e){pid='p'+Math.random().toString(36).slice(2);}
+  function renderLb(rows){
+    if(!rows.length){lbBody.innerHTML='<p>Пока никого нет. Стань первым!</p>';return;}
+    var html='<ol>';
+    rows.forEach(function(v,i){html+='<li'+(v.pid===pid?' class="me"':'')+'><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(v.name||'Игрок')+'</span><span class="sc">'+(v.tries|0)+' поп.</span></li>';});
+    lbBody.innerHTML=html+'</ol>';
+  }
+  async function loadLb(){
+    try{
+      var r=await fetch('/api/leaderboard');
+      if(!r.ok) throw new Error(r.status);
+      renderLb(await r.json());
+    }catch(e){lbBody.innerHTML='<p>Рейтинг сейчас недоступен.</p>';}
+  }
+  async function submit(s){
+    var name=(nick.value||'').trim().slice(0,16)||'Игрок';
+    try{localStorage.setItem('treasure_nick',name);}catch(e){}
+    try{
+      await fetch('/api/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:pid,name:name,tries:s})});
+    }catch(e){}
+    loadLb();
+  }
+  loadLb();
+})();
+</script>
+</body>
+</html>
